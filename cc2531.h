@@ -12,6 +12,8 @@ struct cc2531_frame {
   unsigned char length;
   unsigned char *data;
   char rssi;  
+  uint8_t crcOK;
+  uint8_t correlation;
   uint16_t device_id;
 };
 
