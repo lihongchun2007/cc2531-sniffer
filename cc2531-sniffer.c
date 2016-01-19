@@ -13,7 +13,7 @@ int
 sniff(struct log *log, unsigned char channel, char *remote_address)
 {
   struct cc2531 *cc2531;
-  struct zep *zep;
+  struct zep *zep = NULL;
 
   struct cc2531_frame frame;
   struct ieee802154_packet packet;
@@ -27,7 +27,7 @@ sniff(struct log *log, unsigned char channel, char *remote_address)
   if (cc2531_set_channel(cc2531, channel) < 0) return -1;
   if (cc2531_start_capture(cc2531) < 0) return -1;
 
-  zep = zep_create(log, remote_address);
+  if(remote_address != NULL) zep = zep_create(log, remote_address);
 
   while (1) {
     r = cc2531_get_next_packet(cc2531, &frame);
@@ -39,16 +39,18 @@ sniff(struct log *log, unsigned char channel, char *remote_address)
 	    packet.pan_addr, packet.seq, packet.desc);
     log_msg(log, LOG_LEVEL_INFO, msg);
 
-    r = zep_send_packet(zep, &packet);
-    if (r < 0) {
-      /* If sending fails, then re-open and move on */
-      zep_free(zep);
-      zep = zep_create(log, remote_address);
+    if(remote_address != NULL){
+        r = zep_send_packet(zep, &packet);
+        if (r < 0) {
+          /* If sending fails, then re-open and move on */
+          zep_free(zep);
+          zep = zep_create(log, remote_address);
+        }
     }
   }
   
   /* Clean up */
-  zep_free(zep);
+  if(zep != NULL) zep_free(zep);
   cc2531_free(cc2531);
   log_free(log);
  
@@ -76,7 +78,7 @@ int main(int argc, char* argv[])
     int option_index = 0;
     static struct option long_options[] = {
       {"channel", required_argument, 0, 'c' },
-      {"remote",  required_argument, 0, 'r' },
+      {"remote",  optional_argument, 0, 'r' },
       {0,         0,                 0,  0 }
     };
 
@@ -98,7 +100,7 @@ int main(int argc, char* argv[])
     }
   }
 
-  if (channel == 0 || remote_address == NULL) {
+  if (channel == 0){
     print_usage();
     return(EXIT_FAILURE);
   }
